@@ -451,6 +451,7 @@ wasm-opt = false
 - ✅ 文件加密页面（文件上传、加密下载、解密下载）
 - ✅ 开发文档完善
 - ✅ **响应式适配**（PC/移动端）
+- ✅ **GitHub Actions CI/CD 配置**
 
 **响应式设计要点**：
 - 移动端汉堡菜单导航
@@ -458,6 +459,12 @@ wasm-opt = false
 - 媒体查询断点：768px、480px
 - 触摸设备优化（去除 hover 效果）
 - 移动端字体大小调整
+
+**GitHub Actions CI/CD**：
+- 自动构建 Wasm 模块
+- 自动部署到 GitHub Pages
+- 推送到 main 分支时自动触发
+- 仓库地址：https://github.com/Sogrey/WasmPassword
 
 **待优化**：
 - ⏳ Web Worker 支持

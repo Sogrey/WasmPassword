@@ -58,6 +58,20 @@ wasm-pack build --target web --out-dir ../src/wasm
 npm run build
 ```
 
+### GitHub Pages 部署
+
+项目已配置 GitHub Actions 自动部署：
+
+1. 推送到 `main` 分支自动触发
+2. 自动构建 Wasm 模块
+3. 自动部署到 GitHub Pages
+
+**设置 GitHub Pages**：
+- 进入仓库 Settings → Pages
+- Source 选择 `GitHub Actions`
+
+**仓库地址**：https://github.com/Sogrey/WasmPassword
+
 ## 项目结构
 
 ```
