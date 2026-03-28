@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "run-p type-check \"build-only {@}\" --",
+    "check:wasm": "node scripts/check-wasm-env.js",
+    "build:wasm": "npm run check:wasm && cd wasm-crypto && wasm-pack build --target web --out-dir ../src/wasm",
+    "build": "run-s build:wasm type-check \"build-only {@}\" --",
     "preview": "vite preview",
     "build-only": "vite build",
     "type-check": "vue-tsc --build",

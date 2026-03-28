@@ -48,20 +48,50 @@ npm run dev
 
 访问 http://localhost:5173
 
-### 重新构建 Wasm 模块（可选）
+### 可用脚本
 
-如果修改了 `wasm-crypto/src/lib.rs`，需要重新构建：
-
-```bash
-cd wasm-crypto
-wasm-pack build --target web --out-dir ../src/wasm
-```
+| 脚本 | 说明 |
+|------|------|
+| `pnpm dev` | 启动开发服务器 |
+| `pnpm build` | 完整构建（环境检查 → Wasm → Vue） |
+| `pnpm build:wasm` | 仅构建 Wasm 模块 |
+| `pnpm check:wasm` | 检查 Wasm 构建环境 |
 
 ### 生产构建
 
+执行完整构建：
+
 ```bash
-npm run build
+pnpm build
 ```
+
+**构建流程**：
+
+```
+> run-s build:wasm type-check "build-only {@}" --
+
+> check:wasm                                    # 1. 环境检查
+🔍 检查 Wasm 构建环境...
+✅ rustup: rustup 1.29.0
+✅ wasm32-unknown-unknown target: installed
+✅ wasm-pack: wasm-pack 0.14.0
+✅ 环境检查通过
+
+> wasm-pack build --target web --out-dir ../src/wasm  # 2. 构建 Wasm
+[INFO]: Compiling to Wasm...
+[INFO]: :-) Your wasm pkg is ready to publish at src/wasm
+
+> vue-tsc --build                               # 3. 类型检查
+
+> vite build                                    # 4. 构建 Vue
+✓ 1617 modules transformed.
+dist/assets/wasm_crypto_bg-*.wasm    122.50 kB │ gzip: 47.11 kB
+dist/assets/index-*.css              355.23 kB │ gzip: 48.00 kB
+dist/assets/index-*.js             1,144.97 kB │ gzip: 368.65 kB
+✓ built in 5.59s
+```
+
+**构建产物**：`dist/` 目录
 
 ### GitHub Pages 部署
 
