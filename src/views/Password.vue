@@ -1,10 +1,15 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useCryptoStore } from '@/stores/crypto'
 import { ElMessage } from 'element-plus'
 import { FileUtil } from '@/utils/crypto'
 
 const cryptoStore = useCryptoStore()
+
+// 初始化 Wasm 模块
+onMounted(async () => {
+  await cryptoStore.init()
+})
 
 const plaintext = ref('')
 const ciphertext = ref('')
@@ -83,29 +88,31 @@ function exportKey() {
     ElMessage.warning('没有可导出的密钥')
     return
   }
-  const content = `WasmPassword Key\n================\nKey: ${cryptoStore.currentKey}\nCreated: ${new Date().toISOString()}\n`
-  const data = new TextEncoder().encode(content)
-  FileUtil.downloadFile(data, 'wasm-password-key.txt', 'text/plain')
+  // 只导出纯密钥，方便导入
+  const data = new TextEncoder().encode(cryptoStore.currentKey)
+  FileUtil.downloadFile(data, 'wasm-password-key.key', 'text/plain')
   ElMessage.success('密钥文件已下载')
 }
 
 // 从文件导入密钥
-function importKey(uploadFile: any) {
+async function importKey(uploadFile: any) {
   const file = uploadFile?.raw
   if (!file) return
 
-  const reader = new FileReader()
-  reader.onload = (e) => {
-    const content = e.target?.result as string
+  try {
+    const content = await FileUtil.readFileAsText(file)
+    // 支持两种格式：纯密钥 或 带格式的密钥文件
+    let key = content.trim()
     const match = content.match(/Key:\s*(.+)/)
     if (match && match[1]) {
-      cryptoStore.setKey(match[1].trim())
-      ElMessage.success('密钥已导入')
-    } else {
-      ElMessage.error('无效的密钥文件格式')
+      key = match[1].trim()
     }
+    cryptoStore.setKey(key)
+    ElMessage.success('密钥已导入')
+  } catch {
+    ElMessage.error('无效的密钥文件格式')
   }
-  reader.readAsText(file)
+  return false
 }
 
 // 清空
@@ -149,9 +156,9 @@ function clearAll() {
 
         <el-upload
           :show-file-list="false"
-          :before-upload="() => false"
-          @change="importKey"
-          accept=".txt"
+          :auto-upload="false"
+          accept=".key,.txt"
+          :on-change="importKey"
         >
           <el-button>
             <el-icon><Upload /></el-icon>

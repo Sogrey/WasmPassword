@@ -1,26 +1,71 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useCryptoStore } from '@/stores/crypto'
 import { ElMessage } from 'element-plus'
 import { FileUtil } from '@/utils/crypto'
 
 const cryptoStore = useCryptoStore()
 
+// 初始化 Wasm 模块
+onMounted(async () => {
+  await cryptoStore.init()
+})
+
+// 当前 Tab
+const activeTab = ref('encrypt')
+
+// 加密相关
 const fileList = ref<File[]>([])
 const encryptedFiles = ref<{ name: string; data: Uint8Array; size: number }[]>([])
 const isProcessing = ref(false)
 const progress = ref(0)
 
-// 处理文件选择
-function handleFileChange(file: File) {
-  fileList.value = [...fileList.value, file]
-  return false // 阻止自动上传
+// 解密相关
+const decryptFileList = ref<File[]>([])
+const decryptedFiles = ref<{ name: string; data: Uint8Array; size: number }[]>([])
+const isDecryptProcessing = ref(false)
+const decryptProgress = ref(0)
+
+// 处理加密文件选择
+function handleFileChange(uploadFile: any) {
+  if (uploadFile?.raw) {
+    fileList.value = [...fileList.value, uploadFile.raw]
+  }
+  return false
+}
+
+// 处理解密文件选择
+function handleDecryptFileChange(uploadFile: any) {
+  if (uploadFile?.raw) {
+    decryptFileList.value = [...decryptFileList.value, uploadFile.raw]
+  }
+  return false
+}
+
+// 导入密钥文件
+async function importKeyFile(uploadFile: any) {
+  const file = uploadFile?.raw
+  if (!file) return
+
+  try {
+    const content = await FileUtil.readFileAsText(file)
+    let key = content.trim()
+    const match = content.match(/Key:\s*(.+)/)
+    if (match && match[1]) {
+      key = match[1].trim()
+    }
+    cryptoStore.setKey(key)
+    ElMessage.success('密钥导入成功')
+  } catch {
+    ElMessage.error('密钥文件格式错误')
+  }
+  return false
 }
 
 // 加密文件
 async function encryptFiles() {
   if (!cryptoStore.hasKey) {
-    ElMessage.warning('请先生成密钥')
+    ElMessage.warning('请先导入密钥')
     return
   }
   if (fileList.value.length === 0) {
@@ -53,58 +98,103 @@ async function encryptFiles() {
 }
 
 // 解密文件
-async function decryptFile(file: File | undefined) {
-  if (!file) return
-  
+async function decryptFiles() {
   if (!cryptoStore.hasKey) {
-    ElMessage.warning('请先选择密钥')
+    ElMessage.warning('请先导入密钥')
+    return
+  }
+  if (decryptFileList.value.length === 0) {
+    ElMessage.warning('请选择要解密的文件')
     return
   }
 
-  isProcessing.value = true
+  isDecryptProcessing.value = true
+  decryptProgress.value = 0
 
   try {
-    const data = await FileUtil.readFileAsBytes(file)
-    const decrypted = await cryptoStore.decryptFile(data)
+    const total = decryptFileList.value.length
+    for (let i = 0; i < total; i++) {
+      const file = decryptFileList.value[i]!
+      const data = await FileUtil.readFileAsBytes(file)
+      const decrypted = await cryptoStore.decryptFile(data)
 
-    // 移除 .encrypted 后缀
-    let filename = file.name
-    if (filename.endsWith('.encrypted')) {
-      filename = filename.slice(0, -10)
-    } else {
-      filename = 'decrypted_' + filename
+      let filename = file.name
+      if (filename.endsWith('.encrypted')) {
+        filename = filename.slice(0, -10)
+      } else {
+        filename = 'decrypted_' + filename
+      }
+
+      decryptedFiles.value.push({
+        name: filename,
+        data: decrypted,
+        size: decrypted.length,
+      })
+      decryptProgress.value = Math.round(((i + 1) / total) * 100)
     }
-
-    FileUtil.downloadFile(decrypted, filename)
-    ElMessage.success('解密成功，文件已下载')
+    ElMessage.success('所有文件解密成功')
   } catch (error) {
     ElMessage.error('解密失败，请检查密钥是否正确')
     console.error(error)
   } finally {
-    isProcessing.value = false
+    isDecryptProcessing.value = false
   }
 }
 
-// 下载加密文件
-function downloadEncrypted(file: { name: string; data: Uint8Array }) {
+// 下载文件
+function downloadFile(file: { name: string; data: Uint8Array }) {
   FileUtil.downloadFile(file.data, file.name)
   ElMessage.success('文件已下载')
 }
 
-// 清空列表
-function clearFiles() {
+// 一键下载全部加密文件
+function downloadAllEncrypted() {
+  if (encryptedFiles.value.length === 0) return
+  encryptedFiles.value.forEach((file) => {
+    FileUtil.downloadFile(file.data, file.name)
+  })
+  ElMessage.success(`已下载 ${encryptedFiles.value.length} 个文件`)
+}
+
+// 一键下载全部解密文件
+function downloadAllDecrypted() {
+  if (decryptedFiles.value.length === 0) return
+  decryptedFiles.value.forEach((file) => {
+    FileUtil.downloadFile(file.data, file.name)
+  })
+  ElMessage.success(`已下载 ${decryptedFiles.value.length} 个文件`)
+}
+
+// 清空加密列表
+function clearEncryptFiles() {
   fileList.value = []
   encryptedFiles.value = []
   progress.value = 0
 }
 
-// 移除单个文件
-function removeFile(index: number) {
+// 清空解密列表
+function clearDecryptFiles() {
+  decryptFileList.value = []
+  decryptedFiles.value = []
+  decryptProgress.value = 0
+}
+
+// 移除单个加密文件
+function removeEncryptFile(index: number) {
   fileList.value.splice(index, 1)
 }
 
 function removeEncrypted(index: number) {
   encryptedFiles.value.splice(index, 1)
+}
+
+// 移除单个解密文件
+function removeDecryptFile(index: number) {
+  decryptFileList.value.splice(index, 1)
+}
+
+function removeDecrypted(index: number) {
+  decryptedFiles.value.splice(index, 1)
 }
 
 // 格式化文件大小
@@ -123,151 +213,248 @@ function formatSize(bytes: number): string {
 
     <el-divider />
 
-    <!-- 密钥检查 -->
-    <el-alert
-      v-if="!cryptoStore.hasKey"
-      title="请先在密码加密页面生成或导入密钥"
-      type="warning"
-      show-icon
-      :closable="false"
-      style="margin-bottom: 20px"
-    >
-      <template #default>
-        <el-button type="primary" size="small" @click="$router.push('/password')">
-          前往生成密钥
-        </el-button>
-      </template>
-    </el-alert>
-
-    <!-- 文件上传 -->
-    <el-card shadow="never" class="upload-card">
-      <template #header>
-        <div class="card-header">
-          <el-icon><Upload /></el-icon>
-          <span>选择文件</span>
-        </div>
-      </template>
-
-      <el-upload
-        drag
-        multiple
-        :auto-upload="false"
-        :on-change="handleFileChange"
-        :file-list="[]"
-      >
-        <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
-        <div class="el-upload__text">
-          拖拽文件到此处，或 <em>点击选择</em>
-        </div>
-        <template #tip>
-          <div class="el-upload__tip">
-            支持所有文件类型，可多选
-          </div>
-        </template>
-      </el-upload>
-
-      <!-- 已选文件列表 -->
-      <div v-if="fileList.length > 0" class="file-list">
-        <el-divider>待加密文件 ({{ fileList.length }})</el-divider>
-        <el-table :data="fileList" stripe size="small">
-          <el-table-column prop="name" label="文件名" />
-          <el-table-column label="大小" width="120">
-            <template #default="{ row }">
-              {{ formatSize(row.size) }}
-            </template>
-          </el-table-column>
-          <el-table-column label="操作" width="80">
-            <template #default="{ $index }">
-              <el-button
-                type="danger"
-                size="small"
-                link
-                @click="removeFile($index)"
-              >
-                移除
-              </el-button>
-            </template>
-          </el-table-column>
-        </el-table>
-
-        <div class="actions">
-          <el-button
-            type="primary"
-            @click="encryptFiles"
-            :loading="isProcessing"
-            :disabled="!cryptoStore.hasKey"
+    <!-- 密钥状态 -->
+    <el-card v-if="!cryptoStore.hasKey" shadow="never" class="key-card">
+      <div class="key-import">
+        <el-icon size="24" color="#e6a23c"><Warning /></el-icon>
+        <div class="key-import-text">
+          <p>请先导入密钥文件</p>
+          <el-upload
+            :auto-upload="false"
+            :show-file-list="false"
+            accept=".key,.txt"
+            :on-change="importKeyFile"
           >
-            <el-icon><Lock /></el-icon>
-            开始加密
+            <el-button type="primary" size="small">
+              <el-icon><Key /></el-icon>
+              导入密钥文件
+            </el-button>
+          </el-upload>
+          <el-button size="small" @click="$router.push('/password')">
+            前往生成密钥
           </el-button>
-          <el-button @click="clearFiles">清空</el-button>
         </div>
       </div>
-
-      <!-- 进度条 -->
-      <el-progress
-        v-if="isProcessing"
-        :percentage="progress"
-        :stroke-width="10"
-        style="margin-top: 20px"
-      />
     </el-card>
 
-    <!-- 加密结果 -->
-    <el-card v-if="encryptedFiles.length > 0" shadow="never" class="result-card">
-      <template #header>
-        <div class="card-header">
-          <el-icon><Document /></el-icon>
-          <span>加密文件 ({{ encryptedFiles.length }})</span>
-        </div>
-      </template>
-
-      <el-table :data="encryptedFiles" stripe>
-        <el-table-column prop="name" label="文件名" />
-        <el-table-column label="大小" width="120">
-          <template #default="{ row }">
-            {{ formatSize(row.size) }}
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="150">
-          <template #default="{ row, $index }">
-            <el-button type="primary" size="small" @click="downloadEncrypted(row)">
-              下载
-            </el-button>
-            <el-button type="danger" size="small" link @click="removeEncrypted($index)">
-              删除
-            </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+    <el-card v-else shadow="never" class="key-card">
+      <div class="key-status">
+        <el-icon color="#67c23a"><CircleCheck /></el-icon>
+        <span>密钥已就绪</span>
+        <el-button size="small" @click="cryptoStore.clearKey">更换密钥</el-button>
+      </div>
     </el-card>
 
-    <!-- 解密区域 -->
-    <el-card shadow="never" class="decrypt-card">
-      <template #header>
-        <div class="card-header">
-          <el-icon><Unlock /></el-icon>
-          <span>解密文件</span>
-        </div>
-      </template>
+    <!-- Tab 切换 -->
+    <el-tabs v-model="activeTab" class="file-tabs">
+      <!-- 加密 Tab -->
+      <el-tab-pane label="文件加密" name="encrypt">
+        <el-card shadow="never" class="upload-card">
+          <el-upload
+            drag
+            multiple
+            :auto-upload="false"
+            :on-change="handleFileChange"
+            :file-list="[]"
+          >
+            <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
+            <div class="el-upload__text">
+              拖拽文件到此处，或 <em>点击选择</em>
+            </div>
+            <template #tip>
+              <div class="el-upload__tip">
+                支持所有文件类型，可多选
+              </div>
+            </template>
+          </el-upload>
 
-      <el-upload
-        drag
-        :auto-upload="false"
-        :show-file-list="false"
-        :on-change="(uploadFile: any) => decryptFile(uploadFile?.raw)"
-      >
-        <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
-        <div class="el-upload__text">
-          拖拽加密文件到此处进行解密
-        </div>
-        <template #tip>
-          <div class="el-upload__tip">
-            解密后自动下载
+          <!-- 待加密文件列表 -->
+          <div v-if="fileList.length > 0" class="file-list">
+            <el-divider>待加密文件 ({{ fileList.length }})</el-divider>
+            <el-table :data="fileList" stripe size="small">
+              <el-table-column prop="name" label="文件名" />
+              <el-table-column label="大小" width="120">
+                <template #default="{ row }">
+                  {{ formatSize(row.size) }}
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="80">
+                <template #default="{ $index }">
+                  <el-button
+                    type="danger"
+                    size="small"
+                    link
+                    @click="removeEncryptFile($index)"
+                  >
+                    移除
+                  </el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+
+            <div class="actions">
+              <el-button
+                type="primary"
+                @click="encryptFiles"
+                :loading="isProcessing"
+                :disabled="!cryptoStore.hasKey"
+              >
+                <el-icon><Lock /></el-icon>
+                开始加密
+              </el-button>
+              <el-button @click="clearEncryptFiles">清空</el-button>
+            </div>
           </div>
-        </template>
-      </el-upload>
-    </el-card>
+
+          <!-- 进度条 -->
+          <el-progress
+            v-if="isProcessing"
+            :percentage="progress"
+            :stroke-width="10"
+            style="margin-top: 20px"
+          />
+        </el-card>
+
+        <!-- 加密结果 -->
+        <el-card v-if="encryptedFiles.length > 0" shadow="never" class="result-card">
+          <template #header>
+            <div class="card-header">
+              <div class="card-header-left">
+                <el-icon><Document /></el-icon>
+                <span>加密文件 ({{ encryptedFiles.length }})</span>
+              </div>
+              <el-button type="primary" size="small" @click="downloadAllEncrypted">
+                <el-icon><Download /></el-icon>
+                一键下载全部
+              </el-button>
+            </div>
+          </template>
+
+          <el-table :data="encryptedFiles" stripe>
+            <el-table-column prop="name" label="文件名" />
+            <el-table-column label="大小" width="120">
+              <template #default="{ row }">
+                {{ formatSize(row.size) }}
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="150">
+              <template #default="{ row, $index }">
+                <el-button type="primary" size="small" @click="downloadFile(row)">
+                  下载
+                </el-button>
+                <el-button type="danger" size="small" link @click="removeEncrypted($index)">
+                  删除
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </el-card>
+      </el-tab-pane>
+
+      <!-- 解密 Tab -->
+      <el-tab-pane label="文件解密" name="decrypt">
+        <el-card shadow="never" class="upload-card">
+          <el-upload
+            drag
+            multiple
+            :auto-upload="false"
+            :on-change="handleDecryptFileChange"
+            :file-list="[]"
+          >
+            <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
+            <div class="el-upload__text">
+              拖拽加密文件到此处，或 <em>点击选择</em>
+            </div>
+            <template #tip>
+              <div class="el-upload__tip">
+                支持 .encrypted 文件，可多选
+              </div>
+            </template>
+          </el-upload>
+
+          <!-- 待解密文件列表 -->
+          <div v-if="decryptFileList.length > 0" class="file-list">
+            <el-divider>待解密文件 ({{ decryptFileList.length }})</el-divider>
+            <el-table :data="decryptFileList" stripe size="small">
+              <el-table-column prop="name" label="文件名" />
+              <el-table-column label="大小" width="120">
+                <template #default="{ row }">
+                  {{ formatSize(row.size) }}
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="80">
+                <template #default="{ $index }">
+                  <el-button
+                    type="danger"
+                    size="small"
+                    link
+                    @click="removeDecryptFile($index)"
+                  >
+                    移除
+                  </el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+
+            <div class="actions">
+              <el-button
+                type="success"
+                @click="decryptFiles"
+                :loading="isDecryptProcessing"
+                :disabled="!cryptoStore.hasKey"
+              >
+                <el-icon><Unlock /></el-icon>
+                开始解密
+              </el-button>
+              <el-button @click="clearDecryptFiles">清空</el-button>
+            </div>
+          </div>
+
+          <!-- 解密进度条 -->
+          <el-progress
+            v-if="isDecryptProcessing"
+            :percentage="decryptProgress"
+            :stroke-width="10"
+            style="margin-top: 20px"
+          />
+        </el-card>
+
+        <!-- 解密结果 -->
+        <el-card v-if="decryptedFiles.length > 0" shadow="never" class="result-card">
+          <template #header>
+            <div class="card-header">
+              <div class="card-header-left">
+                <el-icon><Document /></el-icon>
+                <span>解密文件 ({{ decryptedFiles.length }})</span>
+              </div>
+              <el-button type="primary" size="small" @click="downloadAllDecrypted">
+                <el-icon><Download /></el-icon>
+                一键下载全部
+              </el-button>
+            </div>
+          </template>
+
+          <el-table :data="decryptedFiles" stripe>
+            <el-table-column prop="name" label="文件名" />
+            <el-table-column label="大小" width="120">
+              <template #default="{ row }">
+                {{ formatSize(row.size) }}
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="150">
+              <template #default="{ row, $index }">
+                <el-button type="primary" size="small" @click="downloadFile(row)">
+                  下载
+                </el-button>
+                <el-button type="danger" size="small" link @click="removeDecrypted($index)">
+                  删除
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </el-card>
+      </el-tab-pane>
+    </el-tabs>
   </div>
 </template>
 
@@ -281,14 +468,55 @@ function formatSize(bytes: number): string {
 .card-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
   font-weight: bold;
 }
 
+.card-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.file-tabs {
+  margin-top: 20px;
+}
+
 .upload-card,
 .result-card,
-.decrypt-card {
+.key-card {
   margin-bottom: 20px;
+}
+
+.key-import {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.key-import-text {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.key-import-text p {
+  margin: 0;
+  color: #e6a23c;
+  font-weight: 500;
+}
+
+.key-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.key-status span {
+  color: #67c23a;
+  font-weight: 500;
 }
 
 .file-list {
@@ -302,7 +530,7 @@ function formatSize(bytes: number): string {
   gap: 12px;
 }
 
-:deep(.el-upload-dragger) {
+::deep(.el-upload-dragger) {
   padding: 40px;
 }
 

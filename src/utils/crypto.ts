@@ -154,6 +154,20 @@ export const FileUtil = {
   },
 
   /**
+   * 将文件读取为文本
+   */
+  readFileAsText(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => {
+        resolve(reader.result as string)
+      }
+      reader.onerror = reject
+      reader.readAsText(file)
+    })
+  },
+
+  /**
    * 下载文件
    */
   downloadFile(data: Uint8Array, filename: string, mimeType: string = 'application/octet-stream') {
