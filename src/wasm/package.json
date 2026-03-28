@@ -1,0 +1,17 @@
+{
+  "name": "wasm-crypto",
+  "type": "module",
+  "description": "WebAssembly encryption module for WasmPassword",
+  "version": "0.1.0",
+  "license": "MIT",
+  "files": [
+    "wasm_crypto_bg.wasm",
+    "wasm_crypto.js",
+    "wasm_crypto.d.ts"
+  ],
+  "main": "wasm_crypto.js",
+  "types": "wasm_crypto.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}

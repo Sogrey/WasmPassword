@@ -27,10 +27,6 @@ dist-ssr
 wasm-crypto/target
 wasm-crypto/pkg
 
-# Wasm 构建产物（由 CI 构建）
-src/wasm/
-public/wasm/
-
 # Environment
 .env
 .env.local
