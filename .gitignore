@@ -25,9 +25,10 @@ dist-ssr
 
 # Rust / Wasm
 wasm-crypto/target
-
-# 忽略 wasm-crypto 构建产物（但保留 src/wasm）
 wasm-crypto/pkg
+
+# Wasm 构建产物（由 CI 构建）
+src/wasm/
 
 # Environment
 .env
