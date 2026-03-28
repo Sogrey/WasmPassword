@@ -120,6 +120,8 @@ export const useCryptoStore = defineStore('crypto', () => {
     currentKey,
     keyHistory,
     isInitialized,
+    isLoading,
+    initError,
     hasKey,
 
     // 方法
