@@ -176,13 +176,19 @@ WasmPassword/
 - [x] 实现文件加密/解密下载
 - [x] 支持多种文件类型
 
-### 阶段四：优化与完善（Day 6-7）
+### 阶段四：优化与完善（Day 6-7）✅ 已完成
 
+- [x] 响应式设计优化
+- [x] 错误处理与用户提示
+- [x] 文档完善
+- [x] GitHub Actions CI/CD 配置
+- [x] 路由模式优化（Hash 模式）
+- [x] Bug 修复（TypeScript 类型、导入密钥、刷新 404）
+
+**待优化**：
 - [ ] 性能优化（Web Worker 支持）
 - [ ] 大文件分块加密
-- [ ] 错误处理与用户提示完善
 - [ ] 单元测试
-- [ ] 文档完善
 
 ---
 
@@ -438,6 +444,109 @@ wasm-opt = false
 
 ---
 
+### Q6: Element Plus Upload 组件 @change 事件参数错误
+
+**问题描述**：
+
+```text
+Uncaught (in promise) TypeError: Cannot read properties of undefined (reading 'files')
+```
+
+**原因**：
+
+Element Plus Upload 组件的 `@change` 事件参数不是 `Event`，而是 `UploadFile` 对象。
+
+**错误写法**：
+
+```typescript
+function importKey(event: Event) {
+  const file = (event.target as HTMLInputElement).files?.[0]  // ❌
+}
+```
+
+**正确写法**：
+
+```typescript
+function importKey(uploadFile: any) {
+  const file = uploadFile?.raw  // ✅
+}
+```
+
+---
+
+### Q7: GitHub Pages 刷新子路由 404
+
+**问题描述**：
+
+访问 `http://sogrey.top/WasmPassword/password` 刷新后显示 404。
+
+**原因**：
+
+History 模式路由需要服务器配置，GitHub Pages 不支持。
+
+**解决方法**：
+
+使用 Hash 模式路由：
+
+```typescript
+// src/router/index.ts
+import { createRouter, createWebHashHistory } from 'vue-router'
+
+const router = createRouter({
+  history: createWebHashHistory(import.meta.env.BASE_URL),
+  // ...
+})
+```
+
+URL 格式：`http://sogrey.top/WasmPassword/#/password`
+
+---
+
+### Q8: @tsconfig/node24 lib 配置错误
+
+**问题描述**：
+
+```text
+"lib"选项的参数必须为 'es5', 'es6', ...
+```
+
+**原因**：
+
+`@tsconfig/node24` 使用了错误大小写的 `lib` 值（如 `ESNext.Array` 应为 `esnext.array`）。
+
+**解决方法**：
+
+在 `tsconfig.node.json` 中覆盖 `lib` 配置：
+
+```json
+{
+  "compilerOptions": {
+    "lib": ["es2024", "esnext.array", "esnext.collection", "esnext.iterator", "esnext.promise"]
+  }
+}
+```
+
+---
+
+### Q5: wasm-pack 下载 binaryen 失败
+
+**问题描述**：
+
+```text
+Error: failed to download from https://github.com/WebAssembly/binaryen/releases/download/version_117/binaryen-version_117-x86_64-windows.tar.gz
+```
+
+**解决方法**：
+
+禁用 `wasm-opt`（非必需优化工具），在 `Cargo.toml` 中添加：
+
+```toml
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false
+```
+
+---
+
 ## 更新日志
 
 ### 2026-03-28
@@ -452,6 +561,10 @@ wasm-opt = false
 - ✅ 开发文档完善
 - ✅ **响应式适配**（PC/移动端）
 - ✅ **GitHub Actions CI/CD 配置**
+- ✅ **路由模式优化**（Hash 模式解决刷新 404）
+- ✅ **TypeScript 类型修复**
+- ✅ **导入密钥功能修复**
+- ✅ **@tsconfig/node24 兼容性修复**
 
 **响应式设计要点**：
 - 移动端汉堡菜单导航
@@ -466,10 +579,11 @@ wasm-opt = false
 - 推送到 main 分支时自动触发
 - 仓库地址：https://github.com/Sogrey/WasmPassword
 
-**待优化**：
-- ⏳ Web Worker 支持
-- ⏳ 大文件分块加密
-- ⏳ 单元测试
+**已修复的问题**：
+- 🔧 TypeScript 类型错误（Uint8Array 到 Blob 转换）
+- 🔧 Element Plus Upload 组件参数类型错误
+- 🔧 GitHub Pages 刷新子路由 404（改用 Hash 路由）
+- 🔧 @tsconfig/node24 lib 配置兼容性问题
 
 ---
 
@@ -480,3 +594,21 @@ wasm-opt = false
 1. **首页**：功能导航，技术栈展示
 2. **密码加密**：密钥生成、文本加解密
 3. **文件加密**：文件上传、批量加密、解密下载
+
+**在线演示**：http://sogrey.top/WasmPassword
+
+---
+
+## 提交历史
+
+| 提交 | 说明 |
+|------|------|
+| `feat: 初始化项目` | Wasm 数字资产加解密工具初始化 |
+| `fix: 修改 GitHub Actions 使用 npm` | 解决 pnpm-lock.yaml 缺失问题 |
+| `feat: 添加 Wasm 构建步骤` | CI 自动构建 Wasm 模块 |
+| `chore: 忽略 Wasm 构建产物` | 优化 .gitignore |
+| `docs: 更新 GitHub Actions 文档` | 添加 CI/CD 说明 |
+| `fix: 修复 TypeScript 类型错误` | Uint8Array/Blob 转换修复 |
+| `fix: 改用 Hash 路由模式` | 解决刷新 404 问题 |
+| `fix: 修复导入密钥文件错误` | Upload 组件参数修复 |
+| `fix: 修复 @tsconfig/node24 兼容性` | lib 配置覆盖修复 |

@@ -2,6 +2,10 @@
 
 基于 WebAssembly 的数字资产加解密工具，实现数据不出浏览器的隐私计算方案。
 
+## 在线演示
+
+**GitHub Pages**: http://sogrey.top/WasmPassword
+
 ## 功能特性
 
 - **密码加密**：密码的加密存储与管理
@@ -10,6 +14,7 @@
 - **本地优先**：数据不出浏览器，符合隐私合规要求
 - **密钥管理**：生成、导入、导出 AES-256 密钥
 - **响应式设计**：完美适配 PC 和移动端
+- **Hash 路由**：解决刷新 404 问题，支持子路由直接访问
 
 ## 技术栈
 
@@ -17,7 +22,7 @@
 |------|---------|
 | 前端框架 | Vue 3.5 + TypeScript |
 | 状态管理 | Pinia |
-| 路由 | Vue Router 5 |
+| 路由 | Vue Router 5 (Hash 模式) |
 | 构建工具 | Vite 7.3 |
 | Wasm 方案 | Rust + wasm-pack |
 | 加密算法 | AES-256-GCM |
@@ -132,6 +137,16 @@ WasmPassword/
 - **断点**：768px（平板）、480px（手机）
 - **触摸优化**：移动端去除 hover 效果，提升触摸体验
 
+## 路由说明
+
+使用 Hash 模式路由，URL 格式为 `http://sogrey.top/WasmPassword/#/path`：
+
+- `/` - 首页
+- `/#/password` - 密码加密
+- `/#/file` - 文件加密
+
+> 使用 Hash 模式解决 GitHub Pages 刷新子路由 404 的问题
+
 ## 开发环境搭建
 
 详细的环境搭建指南请参考 [DEVELOPMENT.md](./DEVELOPMENT.md)，包含：
@@ -150,6 +165,24 @@ WasmPassword/
 - [wasm-pack 指南](https://rustwasm.github.io/wasm-pack/)
 - [Rust Crypto 库](https://github.com/RustCrypto)
 - [Vite Wasm 支持](https://vitejs.dev/guide/features.html#webassembly)
+
+## 更新日志
+
+### v1.0.0 (2026-03-28)
+
+**新增功能**：
+- ✅ AES-256-GCM 加密算法实现
+- ✅ 密码加密页面
+- ✅ 文件加密页面
+- ✅ 密钥生成、导入、导出
+- ✅ 响应式设计（PC/移动端）
+- ✅ GitHub Actions CI/CD 自动部署
+
+**Bug 修复**：
+- ✅ 修复 TypeScript 类型错误
+- ✅ 修复导入密钥文件错误
+- ✅ 修复刷新子路由 404 问题
+- ✅ 修复 @tsconfig/node24 兼容性问题
 
 ## License
 
