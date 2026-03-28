@@ -90,8 +90,8 @@ function exportKey() {
 }
 
 // 从文件导入密钥
-function importKey(event: Event) {
-  const file = (event.target as HTMLInputElement).files?.[0]
+function importKey(uploadFile: any) {
+  const file = uploadFile?.raw
   if (!file) return
 
   const reader = new FileReader()
