@@ -1,15 +1,10 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 import { useCryptoStore } from '@/stores/crypto'
 import { ElMessage } from 'element-plus'
 import { FileUtil } from '@/utils/crypto'
 
 const cryptoStore = useCryptoStore()
-
-// 初始化 Wasm 模块
-onMounted(async () => {
-  await cryptoStore.init()
-})
 
 // 当前 Tab
 const activeTab = ref('encrypt')

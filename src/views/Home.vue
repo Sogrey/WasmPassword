@@ -1,23 +1,7 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useCryptoStore } from '@/stores/crypto'
-import { ElMessage } from 'element-plus'
 
 const router = useRouter()
-const cryptoStore = useCryptoStore()
-
-const isLoading = ref(true)
-
-onMounted(async () => {
-  try {
-    await cryptoStore.init()
-    isLoading.value = false
-  } catch (error) {
-    ElMessage.error('Wasm 模块初始化失败')
-    console.error(error)
-  }
-})
 
 function goPassword() {
   router.push('/password')
@@ -39,9 +23,7 @@ function goFile() {
       <p class="description">数据不出浏览器，安全合规</p>
     </div>
 
-    <el-skeleton v-if="isLoading" :rows="3" animated />
-
-    <div v-else class="features">
+    <div class="features">
       <el-card class="feature-card" shadow="hover" @click="goPassword">
         <template #header>
           <div class="card-header">

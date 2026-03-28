@@ -1,15 +1,10 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { useCryptoStore } from '@/stores/crypto'
 import { ElMessage } from 'element-plus'
 import { FileUtil } from '@/utils/crypto'
 
 const cryptoStore = useCryptoStore()
-
-// 初始化 Wasm 模块
-onMounted(async () => {
-  await cryptoStore.init()
-})
 
 const plaintext = ref('')
 const ciphertext = ref('')

@@ -7,8 +7,10 @@ export const useCryptoStore = defineStore('crypto', () => {
   const currentKey = ref<string>('')
   const keyHistory = ref<string[]>([])
 
-  // 是否已初始化
+  // Wasm 初始化状态
   const isInitialized = ref(false)
+  const isLoading = ref(false)
+  const initError = ref<string | null>(null)
 
   // 计算属性
   const hasKey = computed(() => !!currentKey.value)
@@ -18,12 +20,24 @@ export const useCryptoStore = defineStore('crypto', () => {
    */
   async function init() {
     if (isInitialized.value) return
-    await crypto.initWasm()
-    isInitialized.value = true
-    // 从 localStorage 恢复密钥历史
-    const saved = localStorage.getItem('keyHistory')
-    if (saved) {
-      keyHistory.value = JSON.parse(saved)
+    if (isLoading.value) return
+
+    isLoading.value = true
+    initError.value = null
+
+    try {
+      await crypto.initWasm()
+      isInitialized.value = true
+      // 从 localStorage 恢复密钥历史
+      const saved = localStorage.getItem('keyHistory')
+      if (saved) {
+        keyHistory.value = JSON.parse(saved)
+      }
+    } catch (error) {
+      initError.value = error instanceof Error ? error.message : 'Wasm 初始化失败'
+      console.error('Wasm init error:', error)
+    } finally {
+      isLoading.value = false
     }
   }
 

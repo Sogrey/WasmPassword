@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { RouterLink, RouterView, useRoute } from 'vue-router'
+import { useCryptoStore } from '@/stores/crypto'
 
 const route = useRoute()
+const cryptoStore = useCryptoStore()
 const isMobileMenuOpen = ref(false)
 
 function toggleMobileMenu() {
@@ -12,88 +14,116 @@ function toggleMobileMenu() {
 function closeMobileMenu() {
   isMobileMenuOpen.value = false
 }
+
+// 初始化 Wasm 模块
+onMounted(async () => {
+  await cryptoStore.init()
+})
 </script>
 
 <template>
   <div class="app-container">
-    <!-- PC端导航栏 -->
-    <nav class="navbar">
-      <RouterLink to="/" class="logo" @click="closeMobileMenu">
-        <el-icon :size="24"><Lock /></el-icon>
-        <span class="logo-text">WasmPassword</span>
-      </RouterLink>
+    <!-- Wasm 加载中 -->
+    <div v-if="cryptoStore.isLoading" class="wasm-loading">
+      <div class="loading-content">
+        <el-icon class="loading-icon" :size="48"><Loading /></el-icon>
+        <h2>WasmPassword</h2>
+        <p>正在加载加密引擎...</p>
+        <el-progress :percentage="100" :indeterminate="true" :show-text="false" />
+      </div>
+    </div>
 
-      <!-- PC端链接 -->
-      <div class="nav-links">
-        <RouterLink to="/" class="nav-link">
-          <el-icon><HomeFilled /></el-icon>
+    <!-- Wasm 加载失败 -->
+    <div v-else-if="cryptoStore.initError" class="wasm-error">
+      <div class="error-content">
+        <el-icon :size="64" color="#f56c6c"><CircleClose /></el-icon>
+        <h2>加载失败</h2>
+        <p>{{ cryptoStore.initError }}</p>
+        <el-button type="primary" @click="cryptoStore.init()">重试</el-button>
+      </div>
+    </div>
+
+    <!-- 正常内容 -->
+    <template v-else>
+      <!-- PC端导航栏 -->
+      <nav class="navbar">
+        <RouterLink to="/" class="logo" @click="closeMobileMenu">
+          <el-icon :size="24"><Lock /></el-icon>
+          <span class="logo-text">WasmPassword</span>
+        </RouterLink>
+
+        <!-- PC端链接 -->
+        <div class="nav-links">
+          <RouterLink to="/" class="nav-link">
+            <el-icon><HomeFilled /></el-icon>
+            <span>首页</span>
+          </RouterLink>
+          <RouterLink to="/password" class="nav-link">
+            <el-icon><Key /></el-icon>
+            <span>密码加密</span>
+          </RouterLink>
+          <RouterLink to="/file" class="nav-link">
+            <el-icon><Document /></el-icon>
+            <span>文件加密</span>
+          </RouterLink>
+        </div>
+
+        <!-- 移动端汉堡按钮 -->
+        <button class="mobile-menu-btn" @click="toggleMobileMenu">
+          <el-icon :size="24">
+            <Close v-if="isMobileMenuOpen" />
+            <Menu v-else />
+          </el-icon>
+        </button>
+      </nav>
+
+      <!-- 移动端菜单 -->
+      <div class="mobile-menu" :class="{ open: isMobileMenuOpen }">
+        <RouterLink
+          to="/"
+          class="mobile-nav-link"
+          :class="{ active: route.path === '/' }"
+          @click="closeMobileMenu"
+        >
+          <el-icon :size="20"><HomeFilled /></el-icon>
           <span>首页</span>
         </RouterLink>
-        <RouterLink to="/password" class="nav-link">
-          <el-icon><Key /></el-icon>
+        <RouterLink
+          to="/password"
+          class="mobile-nav-link"
+          :class="{ active: route.path === '/password' }"
+          @click="closeMobileMenu"
+        >
+          <el-icon :size="20"><Key /></el-icon>
           <span>密码加密</span>
         </RouterLink>
-        <RouterLink to="/file" class="nav-link">
-          <el-icon><Document /></el-icon>
+        <RouterLink
+          to="/file"
+          class="mobile-nav-link"
+          :class="{ active: route.path === '/file' }"
+          @click="closeMobileMenu"
+        >
+          <el-icon :size="20"><Document /></el-icon>
           <span>文件加密</span>
         </RouterLink>
       </div>
 
-      <!-- 移动端汉堡按钮 -->
-      <button class="mobile-menu-btn" @click="toggleMobileMenu">
-        <el-icon :size="24">
-          <Close v-if="isMobileMenuOpen" />
-          <Menu v-else />
-        </el-icon>
-      </button>
-    </nav>
-
-    <!-- 移动端菜单 -->
-    <div class="mobile-menu" :class="{ open: isMobileMenuOpen }">
-      <RouterLink
-        to="/"
-        class="mobile-nav-link"
-        :class="{ active: route.path === '/' }"
+      <!-- 遮罩层 -->
+      <div
+        v-if="isMobileMenuOpen"
+        class="mobile-menu-overlay"
         @click="closeMobileMenu"
-      >
-        <el-icon :size="20"><HomeFilled /></el-icon>
-        <span>首页</span>
-      </RouterLink>
-      <RouterLink
-        to="/password"
-        class="mobile-nav-link"
-        :class="{ active: route.path === '/password' }"
-        @click="closeMobileMenu"
-      >
-        <el-icon :size="20"><Key /></el-icon>
-        <span>密码加密</span>
-      </RouterLink>
-      <RouterLink
-        to="/file"
-        class="mobile-nav-link"
-        :class="{ active: route.path === '/file' }"
-        @click="closeMobileMenu"
-      >
-        <el-icon :size="20"><Document /></el-icon>
-        <span>文件加密</span>
-      </RouterLink>
-    </div>
+      ></div>
 
-    <!-- 遮罩层 -->
-    <div
-      v-if="isMobileMenuOpen"
-      class="mobile-menu-overlay"
-      @click="closeMobileMenu"
-    ></div>
+      <main class="main-content">
+        <RouterView />
+      </main>
 
-    <main class="main-content">
-      <RouterView />
-    </main>
-
-    <footer class="footer">
-      <p>WasmPassword - 数据不出浏览器，安全合规</p>
-      <p class="footer-tech">Powered by WebAssembly + Rust</p>
-    </footer>
+      <footer class="footer">
+        <p>WasmPassword - 数据不出浏览器，安全合规</p>
+        <p class="footer-tech">Powered by WebAssembly + Rust</p>
+      </footer>
+    </template>
   </div>
 </template>
 
@@ -102,6 +132,57 @@ function closeMobileMenu() {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+}
+
+/* Wasm Loading */
+.wasm-loading,
+.wasm-error {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  z-index: 9999;
+}
+
+.loading-content,
+.error-content {
+  text-align: center;
+  color: #fff;
+  padding: 40px;
+}
+
+.loading-content h2,
+.error-content h2 {
+  margin: 20px 0 10px;
+  font-size: 1.8rem;
+}
+
+.loading-content p,
+.error-content p {
+  margin: 0 0 20px;
+  opacity: 0.9;
+}
+
+.loading-icon {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.error-content .el-button {
+  margin-top: 20px;
 }
 
 /* 导航栏 */
