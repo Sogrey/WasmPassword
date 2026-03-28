@@ -34,7 +34,7 @@ async function encryptFiles() {
   try {
     const total = fileList.value.length
     for (let i = 0; i < total; i++) {
-      const file = fileList.value[i]
+      const file = fileList.value[i]!
       const result = await cryptoStore.encryptFile(file)
       encryptedFiles.value.push({
         name: file.name + '.encrypted',
@@ -53,7 +53,9 @@ async function encryptFiles() {
 }
 
 // 解密文件
-async function decryptFile(file: File) {
+async function decryptFile(file: File | undefined) {
+  if (!file) return
+  
   if (!cryptoStore.hasKey) {
     ElMessage.warning('请先选择密钥')
     return
@@ -253,7 +255,7 @@ function formatSize(bytes: number): string {
         drag
         :auto-upload="false"
         :show-file-list="false"
-        :on-change="(file: File) => decryptFile(file)"
+        :on-change="(uploadFile: any) => decryptFile(uploadFile?.raw)"
       >
         <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
         <div class="el-upload__text">

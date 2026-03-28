@@ -157,7 +157,9 @@ export const FileUtil = {
    * 下载文件
    */
   downloadFile(data: Uint8Array, filename: string, mimeType: string = 'application/octet-stream') {
-    const blob = new Blob([data], { type: mimeType })
+    // 创建新的 Uint8Array 副本以避免 SharedArrayBuffer 问题
+    const dataArray = new Uint8Array(data)
+    const blob = new Blob([dataArray], { type: mimeType })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
